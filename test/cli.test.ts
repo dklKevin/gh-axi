@@ -63,6 +63,10 @@ vi.mock("../src/commands/api.js", () => ({
   apiCommand: vi.fn().mockResolvedValue("api output"),
   API_HELP: "api help",
 }));
+vi.mock("../src/commands/gist.js", () => ({
+  gistCommand: vi.fn().mockResolvedValue("gist output"),
+  GIST_HELP: "gist help",
+}));
 vi.mock("../src/commands/stack.js", () => ({
   stackCommand: vi.fn().mockResolvedValue("stack output"),
   STACK_HELP: "stack help",
@@ -113,11 +117,12 @@ describe("main CLI", () => {
   });
 
   it("documents the top-level version flags in help output", () => {
-    expect(TOP_HELP).toContain("flags[4]:");
+    expect(TOP_HELP).toContain("flags[5]:");
     expect(TOP_HELP).toContain("-R/--repo <OWNER/NAME> (after command)");
     expect(TOP_HELP).toContain(
       "--hostname <host> (after command) or GH_HOST env",
     );
+    expect(TOP_HELP).toContain("--allow-writes");
     expect(TOP_HELP).toContain("--help");
     expect(TOP_HELP).toContain("-v/-V/--version");
   });
@@ -313,7 +318,10 @@ describe("main CLI", () => {
       source: "flag",
     };
 
-    await options.commands.secret(["list", "-R", "owner/name"], ctx);
+    await options.commands.secret(
+      ["list", "-R", "owner/name", "--allow-writes"],
+      ctx,
+    );
 
     const { secretCommand } = await import("../src/commands/secret.js");
     expect(vi.mocked(secretCommand)).toHaveBeenCalledWith(["list"], ctx);
@@ -331,7 +339,15 @@ describe("main CLI", () => {
     };
 
     await options.commands.secret(
-      ["set", "CSC_LINK", "-R", "owner/name", "--env", "production"],
+      [
+        "set",
+        "CSC_LINK",
+        "-R",
+        "owner/name",
+        "--env",
+        "production",
+        "--allow-writes",
+      ],
       ctx,
     );
 
@@ -616,6 +632,127 @@ describe("main CLI", () => {
       );
 
       expect(vi.mocked(prCommand)).toHaveBeenCalledWith(["view", "42"], ctx);
+    });
+  });
+
+  describe("--allow-writes", () => {
+    const ctx = {
+      owner: "octo",
+      name: "repo",
+      nwo: "octo/repo",
+      source: "git" as const,
+    };
+
+    it("documents --allow-writes in the top-level help", () => {
+      expect(TOP_HELP).toContain("--allow-writes");
+      expect(TOP_HELP).toContain("gh-axi secret list --allow-writes");
+    });
+
+    it("rejects secret without --allow-writes", async () => {
+      await main();
+      const options = vi.mocked(runAxiCli).mock.calls[0]?.[0];
+      const { secretCommand } = await import("../src/commands/secret.js");
+
+      expect(() => options.commands.secret(["list"], ctx)).toThrow(
+        /Actions secrets require an explicit --allow-writes flag/,
+      );
+      expect(vi.mocked(secretCommand)).not.toHaveBeenCalled();
+    });
+
+    it("rejects api without --allow-writes", async () => {
+      await main();
+      const options = vi.mocked(runAxiCli).mock.calls[0]?.[0];
+      const { apiCommand } = await import("../src/commands/api.js");
+
+      expect(() =>
+        options.commands.api(["/repos/{owner}/{repo}"], ctx),
+      ).toThrow(/Raw GitHub API access require/);
+      expect(vi.mocked(apiCommand)).not.toHaveBeenCalled();
+    });
+
+    it("rejects repo create without --allow-writes and allows repo view", async () => {
+      await main();
+      const options = vi.mocked(runAxiCli).mock.calls[0]?.[0];
+      const { repoCommand } = await import("../src/commands/repo.js");
+
+      expect(() =>
+        options.commands.repo(["create", "demo", "--public"], ctx),
+      ).toThrow(/Repository create, edit, and fork require/);
+      expect(vi.mocked(repoCommand)).not.toHaveBeenCalled();
+
+      await options.commands.repo(["view"], ctx);
+      expect(vi.mocked(repoCommand)).toHaveBeenCalledWith(["view"], ctx);
+    });
+
+    it("rejects workflow run without --allow-writes and allows workflow list", async () => {
+      await main();
+      const options = vi.mocked(runAxiCli).mock.calls[0]?.[0];
+      const { workflowCommand } = await import("../src/commands/workflow.js");
+
+      expect(() =>
+        options.commands.workflow(["run", "ci.yml", "--ref", "main"], ctx),
+      ).toThrow(/Workflow run, enable, and disable require/);
+      expect(vi.mocked(workflowCommand)).not.toHaveBeenCalled();
+
+      await options.commands.workflow(["list"], ctx);
+      expect(vi.mocked(workflowCommand)).toHaveBeenCalledWith(["list"], ctx);
+    });
+
+    it("rejects gist delete without --allow-writes and allows gist list", async () => {
+      await main();
+      const options = vi.mocked(runAxiCli).mock.calls[0]?.[0];
+      const { gistCommand } = await import("../src/commands/gist.js");
+
+      expect(() => options.commands.gist(["delete", "abc123"], ctx)).toThrow(
+        /gist delete requires an explicit --allow-writes flag/,
+      );
+      expect(vi.mocked(gistCommand)).not.toHaveBeenCalled();
+
+      await options.commands.gist(["list"], ctx);
+      expect(vi.mocked(gistCommand)).toHaveBeenCalledWith(["list"], ctx);
+    });
+
+    it("strips --allow-writes before invoking gated handlers", async () => {
+      await main();
+      const options = vi.mocked(runAxiCli).mock.calls[0]?.[0];
+      const { secretCommand } = await import("../src/commands/secret.js");
+      const { apiCommand } = await import("../src/commands/api.js");
+      const { gistCommand } = await import("../src/commands/gist.js");
+
+      await options.commands.secret(
+        ["list", "--allow-writes", "-R", "owner/name"],
+        ctx,
+      );
+      expect(vi.mocked(secretCommand)).toHaveBeenCalledWith(["list"], ctx);
+
+      await options.commands.api(
+        ["/repos/{owner}/{repo}", "--allow-writes"],
+        ctx,
+      );
+      expect(vi.mocked(apiCommand)).toHaveBeenCalledWith(
+        ["/repos/{owner}/{repo}"],
+        ctx,
+      );
+
+      await options.commands.gist(["delete", "abc123", "--allow-writes"], ctx);
+      expect(vi.mocked(gistCommand)).toHaveBeenCalledWith(
+        ["delete", "abc123"],
+        ctx,
+      );
+    });
+
+    it("leaves ordinary writes available without --allow-writes", async () => {
+      await main();
+      const options = vi.mocked(runAxiCli).mock.calls[0]?.[0];
+
+      await options.commands.issue(
+        ["create", "--title", "Fix login", "--body", "steps"],
+        ctx,
+      );
+      expect(vi.mocked(issueCommand)).toHaveBeenCalledWith(
+        ["create", "--title", "Fix login", "--body", "steps"],
+        ctx,
+      );
     });
   });
 });

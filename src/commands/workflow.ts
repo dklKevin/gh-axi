@@ -27,14 +27,16 @@ const WORKFLOW_FLAGS: Record<string, readonly string[]> = {
 export const WORKFLOW_HELP = `usage: gh-axi workflow <subcommand> [flags]
 subcommands[5]:
   list, view <id|name>, run <id|name>, enable <id|name>, disable <id|name>
+note:
+  run, enable, and disable require --allow-writes after the command
 flags{list}:
   --limit <n> (default 20), --all
 flags{run}:
   --ref <git-ref>, --field <key=val> (repeatable)
 examples:
   gh-axi workflow list
-  gh-axi workflow run ci.yml --ref main
-  gh-axi workflow disable 12345`;
+  gh-axi workflow run ci.yml --ref main --allow-writes
+  gh-axi workflow disable 12345 --allow-writes`;
 
 const listSchema: FieldDef[] = [
   field('id'),

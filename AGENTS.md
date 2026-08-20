@@ -87,6 +87,12 @@ Stack commands are cwd-bound. `cli.ts#withLocalRepoContext` rejects explicit rep
 Successful extension status is commonly written to stderr, and exits 2-10 represent actionable stack state. Preserve both streams and the exact `StackError.exitCode`, which reaches the shell only through `cli.ts`'s `formatError` hook; do not replace `ghRaw` with `ghExec` or generic `mapGhError`.
 Never expose an interactive path. Force `view --json`, `submit --auto`, and `merge --yes`; require arguments for commands that otherwise prompt. Keep `modify`, `switch`, `alias`, and `feedback` out unless upstream gains a useful headless interface.
 
+## Skill default is read-only (`src/skill.ts`, `src/writeGuard.ts`)
+
+The installable skill auto-loads for GitHub but documents read-only work only.
+`secret` (all), `api` (all), `repo create`/`edit`/`fork`, `workflow run`/`enable`/`disable`, and `gist delete` require an explicit `--allow-writes` after the command (`src/cli.ts` strips it like `--hostname`).
+Docs recommend a fine-grained PAT instead of a broad `gh` grant. Regenerate `skills/gh-axi/SKILL.md` with `pnpm run build:skill` after changing `src/skill.ts`.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.

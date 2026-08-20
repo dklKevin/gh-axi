@@ -42,13 +42,15 @@ npx skills add kunchenguid/gh-axi --skill gh-axi -g
 
 That is the entire setup - no npm install needed.
 The skill teaches your agent to run gh-axi through `npx -y gh-axi`, so the CLI comes along on demand.
-You still need [`gh`](https://cli.github.com/) installed and authenticated via `gh auth login` (Node 20+ required).
+You still need [`gh`](https://cli.github.com/) installed and authenticated (Node 20+ required).
+Prefer a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) that grants only the repositories and read permissions the agent needs, then authenticate `gh` with that token.
 Stacked PR commands also require GitHub's official extension: `gh extension install github/gh-stack`.
 For GitHub Enterprise or another custom host, authenticate `gh` for that host and either pass `--hostname <host>` after the command or set `GH_HOST`.
 
 The skill is not a user-facing slash command (`user-invocable: false`).
 Its frontmatter also includes Hermes Agent metadata (`metadata.hermes`) so Hermes can categorize it as a `devops` skill for GitHub, git, CI, pull requests, releases, and projects.
-Just ask for anything that touches GitHub - filing issues, reviewing PRs, checking CI runs, cutting releases, managing Projects boards, or managing GitHub Actions secrets and variables - and the agent loads the skill on its own when it recognizes the task.
+The skill is **read-only by default**. Ask for listing or viewing issues and PRs, inspecting CI, browsing releases or Projects, or searching GitHub, and the agent loads the skill on its own.
+Actions secrets, raw API access, repository create/edit/fork, workflow run/enable/disable, and gist deletion require an explicit `--allow-writes` flag after the command. Do not enable those unless you intend the agent to use the identity already configured for `gh`.
 
 `-g` installs the skill for all projects (`~/.claude/skills/`, for example); drop it to install for the current project only (`.claude/skills/`).
 
@@ -94,10 +96,10 @@ gh-axi run list -R owner/repo   # list workflow runs for a specific repo
 gh-axi issue list --hostname git.example.com  # target a GitHub Enterprise host
 gh-axi run view 123456 --job 789012       # inspect a single job within a run
 gh-axi run view --job 789012 --log-failed # show failed log lines for one job
-gh-axi workflow run ci.yml --ref main     # trigger a workflow
+gh-axi workflow run ci.yml --ref main --allow-writes  # trigger a workflow
 gh-axi project list --owner my-org        # list Projects (v2) for an owner
-echo -n "sk-..." | gh-axi secret set OPENAI_API_KEY  # set a secret from stdin
-echo -n "sk-..." | gh-axi secret set CSC_LINK --env production  # scope a secret to an environment
+echo -n "sk-..." | gh-axi secret set OPENAI_API_KEY --allow-writes  # set a secret from stdin
+echo -n "sk-..." | gh-axi secret set CSC_LINK --env production --allow-writes  # scope a secret to an environment
 gh-axi variable set NODE_ENV --body production        # set a variable from a flag
 gh-axi gist list                # list your gists
 gh-axi gist list --public       # list only public gists
@@ -108,7 +110,7 @@ gh-axi gist rename <id> old.txt new.txt  # rename a file
 gh-axi gist create notes.md --public --desc "My notes"  # create a public gist
 gh-axi gist create --file a.py --file b.py --secret    # create a secret multi-file gist
 echo "content" | gh-axi gist create --filename hello.txt --public  # create from piped content
-gh-axi gist delete <id|url>     # delete a gist (always confirmed non-interactively)
+gh-axi gist delete <id|url> --allow-writes  # delete a gist (always confirmed non-interactively)
 gh-axi gist clone <id|url>      # clone a gist locally
 gh-axi setup hooks              # install optional agent session hooks
 gh-axi update --check           # check whether a newer release exists
@@ -129,7 +131,7 @@ A total smaller than the page it accompanies is dropped the same way, since GitH
 
 Long `run view --log` and `run view --log-failed` output shows the last 20,000 characters so CI failures stay visible.
 When truncation happens, gh-axi best-effort saves the complete log to a temp file, includes it as `full_log`, and prints a `help:` hint telling agents to grep that file for earlier context.
-`gh-axi run` manages existing workflow runs; use `gh-axi workflow run <name> --ref <ref>` to trigger (dispatch) a workflow.
+`gh-axi run` manages existing workflow runs; use `gh-axi workflow run <name> --ref <ref> --allow-writes` to trigger (dispatch) a workflow.
 
 `gh-axi pr checks <number>` and the `checks` summary of `gh-axi pr view <number>` bucket every entry of the PR's status-check rollup as `pass`, `fail`, `skip`, or `pending`, covering both check runs (GitHub Actions and similar) and legacy commit statuses (Vercel, `ci/circleci`, and similar).
 Cancelled, stale, timed-out, action-required, and startup-failure check runs count as failed, so a red PR is never reported as merely unfinished.
@@ -138,6 +140,7 @@ Cancelled, stale, timed-out, action-required, and startup-failure check runs cou
 Stack commands operate on local branches and `.git/gh-stack`, so run them from the target repository's working directory. They reject `-R`, `--repo`, and `GH_REPO` rather than pretending a remote repository is enough. `--hostname` remains available for authenticated GitHub Enterprise hosts.
 Agent-safe behavior is automatic: `stack view` requests JSON, `stack submit` adds `--auto`, and `stack merge` requires an explicit stack or PR target and adds `--yes`. Rebase conflicts and other extension exits retain their original exit codes and include recovery guidance.
 
+`gh-axi secret` requires `--allow-writes` after the command.
 `gh-axi secret set <name>` reads the value only from piped stdin because secret flags would be visible in the `gh-axi` process argv.
 `gh-axi secret list` never prints values, matching `gh secret list`.
 `gh-axi secret list`, `set`, and `delete` accept `--env`/`-e <environment>` to scope a secret to a deployment environment; without it the repository scope is used.
@@ -151,6 +154,7 @@ Gist visibility is fixed at creation; a secret gist is unlisted (anyone with the
 Two file-on-disk input forms are available: positional paths (`gist create a.py b.py`) or repeatable `--file` flags (`gist create --file a.py --file b.py`); mixing the two is an error.
 To create a gist from piped content, use `--filename <name>` together with a pipe (`echo "..." | gh-axi gist create --filename foo.txt --public`).
 
+`gh-axi api` requires `--allow-writes` after the command.
 `gh-axi api` accepts `--field`, `--header`, `--paginate`, `--jq <expression>`, `--template <format>`, and `--full`; any other flag, an extra positional argument, or a repeated `--jq`/`--template` is rejected with a clear error instead of being silently dropped.
 JSON responses are normally stripped of noisy fields before TOON encoding, but a response you shaped yourself with `--jq` or `--template` keeps every key and value verbatim — only over-long strings are still truncated so one field cannot flood an agent's context.
 `--full` is an explicit opt-in escape hatch: it keeps every field and every complete value, and it also returns non-JSON response bodies without the length cap. `--full` is a gh-axi flag only, and gh-axi does not send it to `gh`. Compact output stays the default without `--full`.
@@ -163,16 +167,16 @@ JSON responses are normally stripped of noisy fields before TOON encoding, but a
 | `pr`       | Pull requests — list, view, create, merge, review, checks                   |
 | `stack`    | Stacked branches and PRs - create, submit, sync, rebase, merge, navigate    |
 | `run`      | Existing workflow runs - list, view, watch, rerun, cancel, delete, download |
-| `workflow` | Workflows - list, view, run (trigger), enable, disable                      |
+| `workflow` | Workflows - list, view; run/enable/disable require `--allow-writes`         |
 | `release`  | Releases — list, view, create, edit, delete                                 |
-| `repo`     | Repositories — list, view, create, edit, clone, fork                        |
+| `repo`     | Repositories — list, view, clone; create/edit/fork require `--allow-writes` |
 | `label`    | Labels — list, create, edit, delete                                         |
-| `gist`     | Gists — list, view, edit, rename, create, delete, clone                     |
+| `gist`     | Gists — list, view, edit, rename, create, clone; delete requires `--allow-writes` |
 | `project`  | Projects (v2) - list, view, create, edit, close, copy, items, fields        |
-| `secret`   | Actions secrets — list, set, delete                                         |
+| `secret`   | Actions secrets — list, set, delete (requires `--allow-writes`)             |
 | `variable` | Actions variables — list, set, delete                                       |
 | `search`   | Search issues, PRs, repos, commits, code                                    |
-| `api`      | Raw GitHub API access                                                       |
+| `api`      | Raw GitHub API access (requires `--allow-writes`)                           |
 | `setup`    | Install optional agent session hooks                                        |
 | `update`   | Built-in self-update command inherited from `axi-sdk-js`                    |
 
@@ -181,6 +185,7 @@ JSON responses are normally stripped of noisy fields before TOON encoding, but a
 - `--help` — show help for any command
 - `-v`, `-V`, `--version` — show the installed `gh-axi` version
 - `--hostname <host>` / `--hostname=<host>` — target a custom GitHub host; explicit flags win over `GH_HOST`
+- `--allow-writes` — opt in to Actions secrets, raw `api`, `repo create`/`edit`/`fork`, `workflow run`/`enable`/`disable`, and `gist delete` (place after the command)
 
 Repository and host targeting are command-first too:
 

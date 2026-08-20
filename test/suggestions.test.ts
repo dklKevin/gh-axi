@@ -158,10 +158,10 @@ describe("getSuggestions", () => {
     ];
 
     expect(lines).toEqual([
-      'Run `echo -n "<value>" | gh-axi secret set <name> -R cli/cli` to add or update a secret',
-      'Run `echo -n "<value>" | gh-axi secret set <name> -R cli/cli` to add a secret',
-      "Run `gh-axi secret list -R cli/cli` to see all secrets",
-      "Run `gh-axi secret list -R cli/cli` to see remaining secrets",
+      'Run `echo -n "<value>" | gh-axi secret set <name> -R cli/cli --allow-writes` to add or update a secret',
+      'Run `echo -n "<value>" | gh-axi secret set <name> -R cli/cli --allow-writes` to add a secret',
+      "Run `gh-axi secret list -R cli/cli --allow-writes` to see all secrets",
+      "Run `gh-axi secret list -R cli/cli --allow-writes` to see remaining secrets",
     ]);
     expect(lines.every((l) => !l.includes("gh-axi -R"))).toBe(true);
   });
