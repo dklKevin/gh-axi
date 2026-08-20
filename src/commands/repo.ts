@@ -37,6 +37,8 @@ const REPO_FLAGS: Record<string, readonly string[]> = {
 export const REPO_HELP = `usage: gh-axi repo <subcommand> [flags]
 subcommands[6]:
   view [owner/name], create <name>, edit, clone <repo>, fork [repo], list [owner]
+note:
+  create, edit, and fork require --allow-writes after the command
 flags{view}:
   --repo <owner/name> or exactly one positional owner/name; choose one selector
 flags{create}:
@@ -51,7 +53,7 @@ examples:
   gh-axi repo view
   gh-axi repo view --repo owner/name
   gh-axi repo view owner/name
-  gh-axi repo create my-project --public --description "A new project"
+  gh-axi repo create my-project --public --description "A new project" --allow-writes
   gh-axi repo list --visibility public --language TypeScript`;
 
 const viewSchema: FieldDef[] = [

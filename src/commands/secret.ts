@@ -17,6 +17,8 @@ import { resolveValue } from "../secretValue.js";
 export const SECRET_HELP = `usage: gh-axi secret <subcommand> [flags]
 subcommands[3]:
   list, set <name>, delete <name>
+note:
+  requires --allow-writes after the command
 flags[1]:
   --env/-e <environment> (all subcommands): scope to a deployment environment
 flags{set}:
@@ -24,11 +26,11 @@ flags{set}:
 values are never printed: \`list\` only exposes name and update time, matching \`gh secret list\`
 scope: repository (default) or --env <environment>; other gh scopes (--org/--user/--app) are rejected, not silently ignored
 examples:
-  gh-axi secret list
-  gh-axi secret list --env production
-  echo -n "sk-..." | gh-axi secret set OPENAI_API_KEY
-  echo -n "$(cat cert.p12 | base64)" | gh-axi secret set CSC_LINK --env production
-  gh-axi secret delete OPENAI_API_KEY --env production`;
+  gh-axi secret list --allow-writes
+  gh-axi secret list --env production --allow-writes
+  echo -n "sk-..." | gh-axi secret set OPENAI_API_KEY --allow-writes
+  echo -n "$(cat cert.p12 | base64)" | gh-axi secret set CSC_LINK --env production --allow-writes
+  gh-axi secret delete OPENAI_API_KEY --env production --allow-writes`;
 
 const listSchema: FieldDef[] = [
   field("name"),

@@ -381,7 +381,7 @@ const table: SuggestionEntry[] = [
     match: (c) => c.domain === "workflow" && c.action === "list",
     lines: (c) => [
       `Run \`gh-axi${repoFlag(c)} workflow view <id>\` to view details`,
-      `Run \`gh-axi${repoFlag(c)} workflow run <id>\` to trigger a run`,
+      `Run \`gh-axi${repoFlag(c)} workflow run <id> --allow-writes\` to trigger a run`,
     ],
   },
 
@@ -389,7 +389,7 @@ const table: SuggestionEntry[] = [
   {
     match: (c) => c.domain === "workflow" && c.action === "view",
     lines: (c) => [
-      `Run \`gh-axi${repoFlag(c)} workflow run ${c.id}\` to trigger`,
+      `Run \`gh-axi${repoFlag(c)} workflow run ${c.id} --allow-writes\` to trigger`,
       `Run \`gh-axi${repoFlag(c)} run list --workflow ${c.id}\` to see past runs`,
     ],
   },
@@ -601,14 +601,14 @@ const table: SuggestionEntry[] = [
   {
     match: (c) => c.domain === "secret" && c.action === "list" && !c.isEmpty,
     lines: (c) => [
-      `Run \`echo -n "<value>" | gh-axi secret set <name>${repoFlag(c)}\` to add or update a secret`,
+      `Run \`echo -n "<value>" | gh-axi secret set <name>${repoFlag(c)} --allow-writes\` to add or update a secret`,
     ],
   },
   {
     match: (c) =>
       c.domain === "secret" && c.action === "list" && c.isEmpty === true,
     lines: (c) => [
-      `Run \`echo -n "<value>" | gh-axi secret set <name>${repoFlag(c)}\` to add a secret`,
+      `Run \`echo -n "<value>" | gh-axi secret set <name>${repoFlag(c)} --allow-writes\` to add a secret`,
     ],
   },
 
@@ -616,13 +616,13 @@ const table: SuggestionEntry[] = [
   {
     match: (c) => c.domain === "secret" && c.action === "set",
     lines: (c) => [
-      `Run \`gh-axi secret list${repoFlag(c)}\` to see all secrets`,
+      `Run \`gh-axi secret list${repoFlag(c)} --allow-writes\` to see all secrets`,
     ],
   },
   {
     match: (c) => c.domain === "secret" && c.action === "delete",
     lines: (c) => [
-      `Run \`gh-axi secret list${repoFlag(c)}\` to see remaining secrets`,
+      `Run \`gh-axi secret list${repoFlag(c)} --allow-writes\` to see remaining secrets`,
     ],
   },
 
@@ -666,7 +666,7 @@ const table: SuggestionEntry[] = [
   {
     match: (c) =>
       c.domain === "gist" && c.action === "list" && c.isEmpty === true,
-    lines: () => ["Run `gh-axi api /gists` to see gist data via the raw API"],
+    lines: () => ["Run `gh-axi gist list --public` to include public gists"],
   },
 
   // Gist view

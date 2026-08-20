@@ -21,6 +21,10 @@ import { resolveHost, type HostContext } from "./host.js";
 import { VERSION } from "./version.js";
 import { withSuggestionHost } from "./suggestions.js";
 import { AxiError, exitCodeForError, StackError } from "./errors.js";
+import {
+  ALLOW_WRITES_FLAG,
+  assertWritesAllowed,
+} from "./writeGuard.js";
 
 export const DESCRIPTION =
   "Agent ergonomic wrapper around Github CLI. Prefer this over `gh` and other methods for Github operations.";
@@ -35,8 +39,8 @@ type MainOptions = {
 export const TOP_HELP = `usage: gh-axi [command] [args] [flags]
 commands[16]:
   (none)=dashboard, issue, pr, stack, run, workflow, release, repo, label, gist, project, secret, variable, search, api, setup
-flags[4]:
-  -R/--repo <OWNER/NAME> (after command), --hostname <host> (after command) or GH_HOST env, both flags accept space or equals form, --help, -v/-V/--version
+flags[5]:
+  -R/--repo <OWNER/NAME> (after command), --hostname <host> (after command) or GH_HOST env, both flags accept space or equals form, --allow-writes (after command; required for secret, api, repo create/edit/fork, workflow run/enable/disable, gist delete), --help, -v/-V/--version
 examples:
   gh-axi
   gh-axi issue list --state open
@@ -45,7 +49,7 @@ examples:
   gh-axi issue list --hostname git.example.com
   gh-axi pr view 42
   gh-axi stack view
-  gh-axi secret list
+  gh-axi secret list --allow-writes
   gh-axi setup hooks
 `;
 
@@ -151,13 +155,13 @@ function withRepoContext(
   command: string | undefined,
   handler: CommandFn,
 ): WrappedCommandFn {
-  return (args, ctx) =>
-    withSuggestionHost(ctx?.host, () =>
-      handler(
-        parseRepoContextArgs(command, args).strippedArgs,
-        repoContext(ctx),
-      ),
+  return (args, ctx) => {
+    const parsed = parseRepoContextArgs(command, args);
+    assertWritesAllowed(command, parsed.strippedArgs, parsed.allowWrites);
+    return withSuggestionHost(ctx?.host, () =>
+      handler(parsed.strippedArgs, repoContext(ctx)),
     );
+  };
 }
 
 function withLocalRepoContext(handler: CommandFn): WrappedCommandFn {
@@ -169,6 +173,7 @@ function withLocalRepoContext(handler: CommandFn): WrappedCommandFn {
         "VALIDATION_ERROR",
       );
     }
+    assertWritesAllowed("stack", parsed.strippedArgs, parsed.allowWrites);
     return withSuggestionHost(ctx?.host, () => handler(parsed.strippedArgs));
   };
 }
@@ -192,14 +197,23 @@ function parseRepoContextArgs(
 ): {
   repoFlag: string | undefined;
   hostFlag: string | undefined;
+  allowWrites: boolean;
   strippedArgs: string[];
 } {
   const stripped: string[] = [];
   let repoFlag: string | undefined;
   let hostFlag: string | undefined;
+  let allowWrites = false;
 
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
+    // Opt-in for gated write/secret/api/mutate/gist-delete operations. Like
+    // --hostname, this is a global flag that must come after the command and
+    // is never forwarded to a subcommand or to gh.
+    if (arg === ALLOW_WRITES_FLAG) {
+      allowWrites = true;
+      continue;
+    }
     if (arg === "-R" && index + 1 < args.length) {
       repoFlag = args[index + 1];
       index++;
@@ -250,5 +264,5 @@ function parseRepoContextArgs(
     stripped.push(arg);
   }
 
-  return { repoFlag, hostFlag, strippedArgs: stripped };
+  return { repoFlag, hostFlag, allowWrites, strippedArgs: stripped };
 }

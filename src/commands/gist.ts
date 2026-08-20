@@ -23,6 +23,8 @@ import { gistIdFromSelector } from "../gistSelector.js";
 export const GIST_HELP = `usage: gh-axi gist <subcommand> [flags]
 subcommands[7]:
   list, view <id|url>, edit <id|url>, rename <id|url> <old> <new>, create, delete <id|url>, clone <id|url>
+note:
+  delete requires --allow-writes after the command
 flags{list}:
   --limit <n> (default 100), --public, --secret, --fields <field,...>
 flags{view}:
@@ -49,7 +51,7 @@ examples:
   gh-axi gist create notes.md --public --desc "My notes"
   gh-axi gist create --file a.py --file b.py --secret
   echo "content" | gh-axi gist create --filename hello.txt --public
-  gh-axi gist delete <id|url>
+  gh-axi gist delete <id|url> --allow-writes
   gh-axi gist clone <id|url>`;
 
 /** Maximum items per /gists page. Also the per_page ceiling for this endpoint. */

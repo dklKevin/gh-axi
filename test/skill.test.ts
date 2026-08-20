@@ -68,15 +68,27 @@ describe("createSkillMarkdown", () => {
     expect(markdown).toContain("npx -y gh-axi");
   });
 
-  it("documents the gh prerequisite", () => {
+  it("documents the gh prerequisite and a fine-grained PAT", () => {
     const markdown = createSkillMarkdown();
-    expect(markdown).toContain("gh auth login");
+    expect(markdown).toContain("gh-axi requires the [`gh`](https://cli.github.com/) CLI");
+    expect(markdown).toContain("fine-grained personal access token");
+  });
+
+  it("defaults to read-only and gates high-risk operations", () => {
+    const markdown = createSkillMarkdown();
+    expect(markdown).toContain("read-only by default");
+    expect(markdown).toContain("--allow-writes");
+    expect(markdown).toContain("secret");
+    expect(markdown).toContain("gist delete");
+    expect(SKILL_DESCRIPTION).not.toContain("raw API");
+    expect(SKILL_DESCRIPTION).not.toContain("secrets");
+    expect(SKILL_DESCRIPTION).not.toContain("gist delete");
   });
 
   it("documents non-interactive stacked PR workflows", () => {
     const skill = createSkillMarkdown();
     expect(skill).toContain("gh extension install github/gh-stack");
-    expect(skill).toContain("stack submit --open");
+    expect(skill).toContain("stack view");
     expect(skill).toContain("Stack operations are cwd-bound");
     expect(skill).toContain("stack view` always uses JSON");
   });

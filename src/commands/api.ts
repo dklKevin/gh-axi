@@ -6,15 +6,17 @@ import { cleanBody } from '../body.js';
 
 export const API_HELP = `usage: gh-axi api [<method>] <path>
 description: Make an authenticated GitHub API request. Defaults to GET if no method specified.
+note:
+  requires --allow-writes after the command
 methods[6]:
   GET, POST, PUT, PATCH, DELETE, HEAD
 flags[6]:
   --field <key=value> (repeatable), --header <key:value> (repeatable), --paginate, --jq <expression>, --template <format>, --full (preserve complete field values and response bodies without truncation)
 examples:
-  gh-axi api /repos/{owner}/{repo}
-  gh-axi api POST /repos/{owner}/{repo}/issues --field title="Bug report"
-  gh-axi api /repos/{owner}/{repo}/pulls --paginate
-  gh-axi api /repos/{owner}/{repo}/issues/1 --jq '[.labels[].name]'`;
+  gh-axi api /repos/{owner}/{repo} --allow-writes
+  gh-axi api POST /repos/{owner}/{repo}/issues --field title="Bug report" --allow-writes
+  gh-axi api /repos/{owner}/{repo}/pulls --paginate --allow-writes
+  gh-axi api /repos/{owner}/{repo}/issues/1 --jq '[.labels[].name]' --allow-writes`;
 
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']);
 
